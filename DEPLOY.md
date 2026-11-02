@@ -1,56 +1,60 @@
-# Deploy the demo (free): Render (backend) + Vercel (frontend)
-
-Result: a public https link for the assistant + admin console, running in **Demo Mode**
-(simulated device faults so every presentation shows a full diagnose → approve → fix → ticket flow).
+# Deploy the demo — 100% free, no credit card
 
 ```
-Vercel (Next.js)  ──https──►  Render (FastAPI, Docker)  ──►  Ollama Cloud API (gemma4:31b)
+Vercel (Next.js frontend)  ──https──►  Hugging Face Space (FastAPI, Docker)  ──►  Ollama Cloud API (gemma4:31b)
 ```
 
-## 0. Accounts you need (all free)
+Runs in **Demo Mode**: simulated device faults, so every presentation shows the full
+diagnose → admin approval → fix → verify → ticket flow.
+
+## 0. Free accounts
 
 | Service | Why |
 |---|---|
-| GitHub | Holds the code (private repo) |
-| Render — render.com | Runs the backend |
+| Hugging Face — huggingface.co/join | Runs the backend (free CPU Space, sleeps after 48 h idle) |
 | Vercel — vercel.com | Runs the frontend |
-| Ollama — ollama.com/settings/keys | **API key** so the server can use gemma4 cloud |
+| Ollama — ollama.com/settings/keys | API key so the server can use gemma4 cloud |
 
-## 1. Push the code to GitHub (private)
+## 1. Backend → Hugging Face Space
 
-```bash
-cd "Coded Agent"
-gh repo create uhe-network-support-agent --private --source=. --remote=origin --push
+1. huggingface.co → Settings → **Access Tokens** → New token, type **Write**.
+2. Log in from this PC (paste the token when asked — in your terminal, not in chat):
+   ```
+   backend\.venv\Scripts\hf auth login
+   ```
+3. Create the Space and upload the backend:
+   ```
+   cd backend
+   .venv\Scripts\hf repo create uhe-network-agent-api --repo-type space --space-sdk docker
+   .venv\Scripts\hf upload <your-hf-username>/uhe-network-agent-api . . --repo-type space --exclude ".venv/*" ".env" "data/*" "__pycache__/*" "*/__pycache__/*"
+   ```
+4. On the Space page → **Settings → Variables and secrets → New secret**:
+   - `OLLAMA_API_KEY` = your Ollama key
+   - `ADMIN_TOKEN` = a long random password for the admin console
+   Then **Restart Space**.
+5. Backend URL: `https://<your-hf-username>-uhe-network-agent-api.hf.space`
+   Check `<URL>/api/health` → `"ollama": true`.
+
+> The Space must be **public** so the website can call it. Only code is public — keys stay in Secrets.
+
+## 2. Frontend → Vercel
+
 ```
-
-## 2. Backend on Render
-
-1. render.com → **New → Blueprint** → connect GitHub → pick `uhe-network-support-agent`.
-2. Render reads `render.yaml` and asks for **OLLAMA_API_KEY** → paste your key from ollama.com/settings/keys.
-3. Click **Apply**. Wait for the build (~3–5 min).
-4. Copy the service URL, e.g. `https://uhe-network-agent-api.onrender.com`.
-   Check: open `<URL>/api/health` → should show `"ollama": true`.
-5. Service → **Environment** → copy the generated **ADMIN_TOKEN** (used to sign in to the admin console).
-
-## 3. Frontend on Vercel
-
-```bash
 cd frontend
-vercel link                     # create project "uhe-network-support-agent"
-vercel env add NEXT_PUBLIC_API_URL production   # paste the Render URL (no trailing slash)
+vercel link
+vercel env add NEXT_PUBLIC_API_URL production     # paste the HF Space URL (no trailing slash)
 vercel --prod
 ```
 
-(Or in the Vercel dashboard: **Add New → Project** → import the repo → **Root Directory = `frontend`** → add env var `NEXT_PUBLIC_API_URL` = Render URL → Deploy.)
+## 3. Test the demo
 
-## 4. Test
+1. Open the Vercel URL → pick **"No IP from DHCP"**.
+2. Open `<Vercel URL>/admin` in another tab → sign in with ADMIN_TOKEN → **Approve**.
+3. Back in the chat: the agent re-checks, confirms the fix, registers a ticket.
 
-- Open the Vercel URL → pick **"No IP from DHCP"** → agent diagnoses and requests approval.
-- Open `<Vercel URL>/admin` in another tab → sign in with ADMIN_TOKEN → **Approve**.
-- Back in the chat: agent re-checks, confirms fix, registers ticket.
+## Notes
 
-## Before the presentation
-
-- **Render free tier sleeps after 15 min idle.** Open `<Render URL>/api/health` ~1 minute before presenting to wake it.
-- The free tier's disk is temporary: tickets/logs reset when the service restarts. Fine for demos; for persistence add a Render PostgreSQL database and set `DATABASE_URL` (+ add `psycopg[binary]` to requirements.txt).
-- To run real diagnostics instead of simulated ones, run the project locally (`start.bat`) — a cloud server can only test its own network.
+- Open `<HF URL>/api/health` a minute before presenting if the Space was idle for 2+ days (cold start).
+- Tickets/logs live in SQLite inside the Space and reset when it restarts — fine for demos.
+  For permanent storage, create a free Neon Postgres DB and set `DATABASE_URL` (+ `psycopg[binary]` in requirements.txt).
+- Real diagnostics of the user's own PC: run locally with `start.bat` (a cloud server can only test its own network).
