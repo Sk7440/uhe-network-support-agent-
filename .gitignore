@@ -6,3 +6,5 @@ frontend/node_modules/
 frontend/.next/
 frontend/.env.local
 .env
+admin-token.txt
+frontend/.vercel/

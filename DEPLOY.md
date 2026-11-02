@@ -15,35 +15,31 @@ diagnose → admin approval → fix → verify → ticket flow.
 | Vercel — vercel.com | Runs the frontend |
 | Ollama — ollama.com/settings/keys | API key so the server can use gemma4 cloud |
 
-## 1. Backend → Hugging Face Space
+## 1. One-click deploy
 
-1. huggingface.co → Settings → **Access Tokens** → New token, type **Write**.
-2. Log in from this PC (paste the token when asked — in your terminal, not in chat):
-   ```
-   backend\.venv\Scripts\hf auth login
-   ```
-3. Create the Space and upload the backend:
-   ```
-   cd backend
-   .venv\Scripts\hf repo create uhe-network-agent-api --repo-type space --space-sdk docker
-   .venv\Scripts\hf upload <your-hf-username>/uhe-network-agent-api . . --repo-type space --exclude ".venv/*" ".env" "data/*" "__pycache__/*" "*/__pycache__/*"
-   ```
-4. On the Space page → **Settings → Variables and secrets → New secret**:
-   - `OLLAMA_API_KEY` = your Ollama key
-   - `ADMIN_TOKEN` = a long random password for the admin console
-   Then **Restart Space**.
-5. Backend URL: `https://<your-hf-username>-uhe-network-agent-api.hf.space`
-   Check `<URL>/api/health` → `"ollama": true`.
+Double-click **`deploy.bat`** (in this folder). It will:
 
-> The Space must be **public** so the website can call it. Only code is public — keys stay in Secrets.
+1. Log you in to Hugging Face (paste a **Write** token from huggingface.co/settings/tokens) and Vercel if needed.
+2. Ask for your **Ollama API key** (typed in the terminal, hidden) and test that `gemma4` works with it.
+3. Create a random **admin token** → saved to `admin-token.txt` (not committed).
+4. Push the code to a **private** GitHub repo.
+5. Create the Hugging Face Space, set the secrets, upload the backend, wait until it is online.
+6. Deploy the frontend to Vercel with the backend URL and open the site.
 
-## 2. Frontend → Vercel
+Re-run `deploy.bat` any time to update the deployment.
+
+> The Space is **public** (so the website can call it). Only code is public — keys stay in Space Secrets.
+
+## 2. Manual alternative
 
 ```
+backend\.venv\Scripts\hf auth login
+set OLLAMA_API_KEY=...   &  set ADMIN_TOKEN=...   &  set CHAT_MODEL=gemma4:31b
+backend\.venv\Scripts\python scripts\deploy_hf.py           # prints SPACE_URL=...
 cd frontend
-vercel link
-vercel env add NEXT_PUBLIC_API_URL production     # paste the HF Space URL (no trailing slash)
-vercel --prod
+vercel link --yes --project uhe-network-support-agent
+vercel env add NEXT_PUBLIC_API_URL --environment production --value <SPACE_URL> --force --yes
+vercel --prod --yes
 ```
 
 ## 3. Test the demo
