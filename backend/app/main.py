@@ -20,11 +20,14 @@ from .db import Approval, ChatSession, DiagnosticLog, Message, SessionLocal, Tic
 from .tools import KB, LEVEL2_ACTIONS, execute_level2
 
 
+# Create tables at import too: serverless hosts (Vercel) may not run the lifespan hook.
+init_db()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_db()
     try:
-        n = await KB.build()
+        n = await KB.ensure()
         print(f"[startup] knowledge base: {n} sections indexed")
     except Exception as e:
         print(f"[startup] knowledge base NOT loaded ({e}); agent still works")
@@ -98,6 +101,10 @@ def get_session_or_404(db: Session, sid: str) -> ChatSession:
 @app.get("/api/health")
 async def health():
     demo = settings.diagnostics_mode == "demo"
+    try:
+        await KB.ensure()
+    except Exception:
+        pass
     out = {"api": True, "model": settings.chat_model, "kb_sections": len(KB.chunks),
            "level2_execution": settings.allow_level2_execution or demo,
            "diagnostics_mode": settings.diagnostics_mode,

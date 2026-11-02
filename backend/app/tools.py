@@ -223,6 +223,16 @@ class KnowledgeBase:
     def __init__(self):
         self.chunks: list[dict] = []
         self.mode = "none"
+        self.built = False
+        self._lock = asyncio.Lock()
+
+    async def ensure(self) -> int:
+        """Build the index once (lazily on serverless hosts)."""
+        if not self.built:
+            async with self._lock:
+                if not self.built:
+                    await self.build()
+        return len(self.chunks)
 
     @staticmethod
     def _words(text: str) -> list[str]:
@@ -251,6 +261,7 @@ class KnowledgeBase:
             except Exception:
                 pass  # keyword search still works
         self.chunks = chunks
+        self.built = True
         return len(chunks)
 
     async def search(self, query: str, k: int = 3) -> list[dict]:
@@ -281,6 +292,7 @@ async def search_knowledge_base(query: str) -> dict:
     query = query.strip()[:300]
     if not query:
         raise ToolError("query is required")
+    await KB.ensure()
     hits = await KB.search(query)
     return {
         "status": "success",
