@@ -1,0 +1,23 @@
+# Render Blueprint: New > Blueprint > select this repo.
+services:
+  - type: web
+    name: uhe-network-agent-api
+    runtime: docker
+    rootDir: backend
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: OLLAMA_URL
+        value: https://ollama.com
+      - key: CHAT_MODEL
+        value: gemma4:31b
+      - key: OLLAMA_API_KEY
+        sync: false          # paste your key from ollama.com/settings/keys in the Render dashboard
+      - key: ADMIN_TOKEN
+        generateValue: true  # Render creates a random token; copy it from the dashboard
+      - key: DIAGNOSTICS_MODE
+        value: demo
+      - key: FRONTEND_ORIGIN_REGEX
+        value: https://.*\.vercel\.app
+      - key: TEMPERATURE
+        value: "0.1"
